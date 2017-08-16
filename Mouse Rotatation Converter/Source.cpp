@@ -2,13 +2,33 @@
 Author: Gavin Dunlap [Siech0]
 Purpose: Translate A/D keyboard input into mouse input, tracing a circular pattern. (For a game)
 Notes: Yes, I understand this is sloppy, I did this in 30 minutes in order to play a .IO game more effectively.
+Usage: 
+	ALT+Q quits
+	ALT+R initiates circle specification phase
+	After ALT+R the next two left-mouse button down-presses will do the following
+		1) Determine the center point of the circle
+		2) Determine the radius of the circle
+	After the circle information has been input, the A and D keys will now cause the mouse to trace the circle.
 */
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-#include <sstream>
+#include <cstdlib>
 #include <cmath>
-#include <memory>
+
+enum MousePrepStatus
+{
+	PrepareCenter,
+	PrepareRadius,
+	BoundsDefined,
+	Invalid
+};
+
+enum RotationDirection
+{
+	DirectionLeft,
+	DirectionRight
+};
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
 DWORD WINAPI RotateFunction(void *lpParameter);
@@ -19,7 +39,7 @@ HANDLE rotateThread = nullptr;
 
 POINT center = {};
 unsigned int radius = 0;
-unsigned int mousePrep = 3; // 0 = ready center, 1 = ready radius, 2 = needs reset, 3 = invalid (TODO: Enum)
+MousePrepStatus mousePrep = MousePrepStatus::Invalid;
 constexpr int HOTKEY_REGISTER = 6030, HOTKEY_QUIT = 6031;
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -93,7 +113,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		return EXIT_FAILURE;
 	}
 
-
 	//Message loop
 	MSG msg;
 	while (GetMessage(&msg, NULL, 0, 0))
@@ -128,7 +147,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		if (wParam == HOTKEY_REGISTER)
 		{
 			OutputDebugString("ALT+R\n");
-			mousePrep = 0;
+			mousePrep = MousePrepStatus::PrepareCenter;
 		}
 		else if (wParam == HOTKEY_QUIT)
 		{
@@ -152,19 +171,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		if (raw->header.dwType == RIM_TYPEKEYBOARD)
 		{
 			const auto& kb = raw->data.keyboard; //Cleans up code a bit, should be optimized out.
-			if (mousePrep == 2) //Center and radius are initialized
+			if (mousePrep == MousePrepStatus::BoundsDefined) //Center and radius are initialized
 			{
 				if (kb.Message == WM_KEYDOWN) //key down
 				{
 					if (kb.VKey == 0x41) //A
 					{
 						if (rotateThread == nullptr) //Thread is running, possible 2 keys down
-							rotateThread = CreateThread(nullptr, 0, RotateFunction, (void *)-1, 0, nullptr);
+							rotateThread = CreateThread(nullptr, 0, RotateFunction, (void *)RotationDirection::DirectionLeft, 0, nullptr);
 					}
 					else if (kb.VKey == 0x44) //D
 					{
 						if (rotateThread == nullptr)
-							rotateThread = CreateThread(nullptr, 0, RotateFunction, (void *)1, 0, nullptr);
+							rotateThread = CreateThread(nullptr, 0, RotateFunction, (void *)RotationDirection::DirectionRight , 0, nullptr);
 					}
 				}
 				else if (kb.Message == WM_KEYUP && (kb.VKey == 0x41 || kb.VKey == 0x44)) //One of our keys is now up
@@ -181,23 +200,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			{
 				POINT pos;
 				GetCursorPos(&pos);
-				if (mousePrep == 0)
+				if (mousePrep == MousePrepStatus::PrepareCenter)
 				{
 					POINT pos;
 					GetCursorPos(&pos);
+
 					center.x = pos.x;
 					center.y = pos.y;
-					mousePrep = 1; //Set radius phase
+					mousePrep = MousePrepStatus::PrepareRadius;
 				}
-				else if (mousePrep == 1)
+				else if (mousePrep == MousePrepStatus::PrepareRadius)
 				{
 					POINT pos;
-					LONG xDistRaw, yDistRaw;
 					GetCursorPos(&pos);
-					xDistRaw = center.x - pos.x; //Simply to get rid of code-soup
-					yDistRaw = center.y - pos.y;
+
+					const LONG xDistRaw = center.x - pos.x; //Simply to get rid of code-soup
+					const LONG yDistRaw = center.y - pos.y;
 					radius = sqrt(xDistRaw*xDistRaw + yDistRaw*yDistRaw);
-					mousePrep = 2; //Need reset phase
+					mousePrep = MousePrepStatus::BoundsDefined;
 				}
 			}
 		}
@@ -216,12 +236,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 DWORD WINAPI RotateFunction(void *lpParameter)
 {
-	std::stringstream ss;
 	POINT sPos; //Starting position
 	if (!GetCursorPos(&sPos))
 		return 0;
-
-
 
 	static constexpr double degree = 0.1745; //1 Degree in rads
 	double currentAngle = std::atan2((sPos.y - center.y), (sPos.x - center.x));
@@ -229,10 +246,11 @@ DWORD WINAPI RotateFunction(void *lpParameter)
 
 	while (true)
 	{
-		if (dir > 0)
-			currentAngle += (degree / 2);
-		else
-			currentAngle -= (degree / 2);
+		if (dir == RotationDirection::DirectionRight)
+			currentAngle += degree / 2;
+		else if (dir == RotationDirection::DirectionLeft)
+			currentAngle -= degree / 2;
+
 		SetCursorPos(center.x + radius*std::cos(currentAngle), center.y + radius*std::sin(currentAngle));
 		Sleep(20);
 	}
