@@ -45,7 +45,6 @@ constexpr int HOTKEY_REGISTER = 6030, HOTKEY_QUIT = 6031;
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 	//Prepare and register Window Class
-	OutputDebugString("test\n");
 	WNDCLASSEX wc = {};
 	wc.cbSize = sizeof(WNDCLASSEX);
 	wc.style = CS_HREDRAW | CS_VREDRAW;
