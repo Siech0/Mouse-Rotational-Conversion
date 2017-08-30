@@ -125,8 +125,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 void Quit(HWND hWnd)
 {
-	UnregisterHotKey(hWnd, 6030);
-	UnregisterHotKey(hWnd, 6031);
+	UnregisterHotKey(hWnd, HOTKEY_REGISTER);
+	UnregisterHotKey(hWnd, HOTKEY_QUIT);
 	UnregisterClass("hiddenWindowClass", GetModuleHandle(nullptr));
 	PostQuitMessage(0);
 }
