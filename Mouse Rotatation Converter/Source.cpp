@@ -13,6 +13,8 @@ Usage:
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
+
+#include <vector>
 #include <cstdlib>
 #include <cmath>
 
@@ -159,13 +161,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		unsigned int dwSize;
 		GetRawInputData((HRAWINPUT)lParam, RID_INPUT, nullptr, &dwSize, sizeof(RAWINPUTHEADER));
-		LPBYTE lpb = new BYTE[dwSize];
-
-		if (lpb == nullptr)
-			return 0;
-		if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER)) != dwSize)
+		std::vector<BYTE> lpb(dwSize);
+		
+		if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, lpb.data(), &dwSize, sizeof(RAWINPUTHEADER)) != dwSize)
 			OutputDebugString("GetRawInputData did not return correct size! \n");
-		RAWINPUT* raw = (RAWINPUT *)lpb;
+		RAWINPUT* raw = (RAWINPUT *)lpb.data();
 
 		if (raw->header.dwType == RIM_TYPEKEYBOARD)
 		{
