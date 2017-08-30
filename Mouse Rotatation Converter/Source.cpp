@@ -60,7 +60,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	if (!RegisterClassEx(&wc))
 	{
-		MessageBox(NULL, "ERROR: Window registration failed!", "ERROR!", 0);
+		MessageBox(nullptr, "ERROR: Window registration failed!", "ERROR!", 0);
 		return EXIT_FAILURE;
 	}
 
