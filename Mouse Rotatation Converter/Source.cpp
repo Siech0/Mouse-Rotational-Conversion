@@ -1,7 +1,6 @@
 /*
 Author: Gavin Dunlap [Siech0]
 Purpose: Translate A/D keyboard input into mouse input, tracing a circular pattern. (For a game)
-Notes: Yes, I understand this is sloppy, I did this in 30 minutes in order to play a .IO game more effectively.
 Usage: 
 	ALT+Q quits
 	ALT+R initiates circle specification phase
